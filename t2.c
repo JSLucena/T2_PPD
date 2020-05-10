@@ -10,15 +10,13 @@
 
 //##Control Commands###################
 #define NEW_ELECTION  10
-#define ENABLE_PROC  20
-#define DISABLE_PROC  30
 #define STOP  90
 //######################################
 
 int searchWinner(int *message, int size)
 {
     int biggest = 0;
-    for(int i = 0;i <= size;i++)
+    for(int i = 0;i < size;i++)
     {
         if(message[i] > biggest)
             biggest = message[i];
@@ -73,6 +71,33 @@ main(int argc, char** argv)
             coordPID = message[0];
             printf("Novo coordenador eh o processo %d\n",coordPID);
 
+            printf("solicitando nova eleicao com o coordenador atual desabilitado\n");
+            message[0] = NEW_ELECTION;
+            message[proc_n] = coordPID;
+            MPI_Send(message, proc_n+1, MPI_INT, 1, CONTROL_TAG, MPI_COMM_WORLD);
+            printf("Esperando termino de eleicao....\n");
+            MPI_Recv(message, proc_n+1, MPI_INT, 1, ELECTION_CONFIRMATION_TAG, MPI_COMM_WORLD, &status); 
+            printf("Eleicao concluida\n");
+            coordPID = message[0];
+            printf("Novo coordenador eh o processo %d\n",coordPID);
+
+
+            printf("solicitando eleicoes concorrentes, a primeira derrubando o atual coordenador e a ultima com todos\n");
+            message[0] = NEW_ELECTION;
+            message[proc_n] = coordPID;
+            MPI_Send(message, proc_n+1, MPI_INT, 1, CONTROL_TAG, MPI_COMM_WORLD);
+            message[0] = NEW_ELECTION;
+            message[proc_n] = -1;
+            MPI_Send(message, proc_n+1, MPI_INT, 2, CONTROL_TAG, MPI_COMM_WORLD);
+            printf("esperando termino de eleicoes\n");
+            MPI_Recv(message, proc_n+1, MPI_INT, MPI_ANY_SOURCE, ELECTION_CONFIRMATION_TAG, MPI_COMM_WORLD, &status);
+            coordPID = message[0];
+            printf("Coordenador da primeira eleicao: %d\n",coordPID);
+            MPI_Recv(message, proc_n+1, MPI_INT, MPI_ANY_SOURCE, ELECTION_CONFIRMATION_TAG, MPI_COMM_WORLD, &status);  
+            coordPID = message[0];
+            printf("Novo coordenador eh o processo %d\n",coordPID);
+
+
             message[0] = STOP;
             printf("Terminando teste\n");
             MPI_Send(message, proc_n+1, MPI_INT, coordPID, CONTROL_TAG, MPI_COMM_WORLD);
@@ -83,6 +108,7 @@ main(int argc, char** argv)
             while(stop != 1)
             {
                 MPI_Recv(message, proc_n+1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status); 
+                 
                 if(my_rank == proc_n - 1)
                 {
                     if(message[proc_n] == 1)
@@ -92,7 +118,7 @@ main(int argc, char** argv)
                 }
                 else
                 {
-                    if(my_rank+2 >= proc_n)
+                    if(my_rank == proc_n-2)
                     {
                         if(message[proc_n] == my_rank+1)
                             dest = 1;
@@ -141,7 +167,7 @@ main(int argc, char** argv)
                                 message[i]= -1;
                             }
 
-
+                        
                         message[0] = coordPID; // mandar o novo coordenador
                         message[my_rank] = my_rank; //mandar o processo que iniciou a cadeia
                         MPI_Send(message, proc_n+1, MPI_INT, dest, ELECTION_CONFIRMATION_TAG, MPI_COMM_WORLD);
