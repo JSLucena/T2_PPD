@@ -84,7 +84,7 @@ main(int argc, char** argv)
 
             printf("solicitando eleicoes concorrentes, a primeira derrubando o atual coordenador e a ultima com todos\n");
             message[0] = NEW_ELECTION;
-            message[proc_n] = coordPID;
+            message[proc_n] = proc_n-1;
             MPI_Send(message, proc_n+1, MPI_INT, 1, CONTROL_TAG, MPI_COMM_WORLD);
             message[0] = NEW_ELECTION;
             message[proc_n] = -1;
